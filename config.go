@@ -10,16 +10,9 @@ import (
 	"math"
 	"reflect"
 
+	"github.com/he11ah0und/logger"
 	"github.com/he11ah0und/yamltree"
 )
-
-// Logger is the minimal logging surface used by the sheet.
-// It is satisfied by any type with formatted Debug/Info/Warn methods.
-type Logger interface {
-	Debugf(format string, args ...any)
-	Infof(format string, args ...any)
-	Warnf(format string, args ...any)
-}
 
 // Type describes the runtime type of a Cell.
 type Type string
@@ -148,21 +141,17 @@ func WithDisabled(disabled bool) Option {
 
 // Sheet is a tree of typed configuration cells.
 type Sheet struct {
-	log       Logger
+	log       *logger.LogTerminal
 	root      *node
 	onMissing OnMissing
 }
 
 func (s *Sheet) debugf(format string, args ...any) {
-	if s.log != nil {
-		s.log.Debugf(format, args...)
-	}
+	s.log.Debugf(append([]any{format}, args...)...)
 }
 
 func (s *Sheet) warnf(format string, args ...any) {
-	if s.log != nil {
-		s.log.Warnf(format, args...)
-	}
+	s.log.Warnf(append([]any{format}, args...)...)
 }
 
 type node struct {
@@ -329,10 +318,10 @@ func (s *Sheet) DisabledCount() int {
 	return disabledCount(s.root)
 }
 
-// SetLogger sets the sheet's logger. It is optional: when unset, all log
-// output is discarded. It can be called after the sheet is created to switch
-// from a temporary bootstrap logger to the application logger.
-func (s *Sheet) SetLogger(log Logger) {
+// SetLogger sets the sheet's logger terminal. It is optional: logging through
+// a nil terminal is a no-op. It can be called after the sheet is created to
+// switch from a temporary bootstrap logger to the application logger.
+func (s *Sheet) SetLogger(log *logger.LogTerminal) {
 	if s == nil {
 		return
 	}
@@ -342,7 +331,7 @@ func (s *Sheet) SetLogger(log Logger) {
 // DebugDisabledCount logs the number of disabled cells at debug level. It is a
 // no-op if the sheet has no logger.
 func (s *Sheet) DebugDisabledCount() {
-	if s == nil || s.log == nil {
+	if s == nil {
 		return
 	}
 	if count := s.DisabledCount(); count > 0 {
